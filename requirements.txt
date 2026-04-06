@@ -1,6 +1,6 @@
 fastapi
 uvicorn
 python-dotenv
-pyTigerGraph
+pyTigerGraph==2.0.1
 openai
 pydantic

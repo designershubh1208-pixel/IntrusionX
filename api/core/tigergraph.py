@@ -22,12 +22,13 @@ def _make_connection() -> TigerGraphConnection:
         graphname=settings.graph_name,
         gsqlSecret=settings.tg_credential,
         tgCloud=settings.tg_cloud,
-        apiToken=settings.tg_api_token or "",
     )
-    # For pyTigerGraph compatibility, let the library set token/auth internals.
-    # Manual auth-mode mutation can break on version differences.
-    if not settings.tg_api_token:
-        conn.getToken(secret=settings.tg_credential, setToken=True)
+    if settings.tg_api_token:
+        conn.apiToken = settings.tg_api_token
+        conn.authMode = "token"
+    # Avoid getToken() due version-specific internal token-cache bugs on some
+    # pyTigerGraph releases. Refresh auth headers from available credentials.
+    conn._refresh_auth_headers()
     logger.info("TigerGraph connection established → %s / %s", settings.tg_host_https, settings.graph_name)
     return conn
 
