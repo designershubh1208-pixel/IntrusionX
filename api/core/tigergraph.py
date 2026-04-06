@@ -13,6 +13,24 @@ _lock = threading.Lock()
 _conn: TigerGraphConnection | None = None
 
 
+def _ensure_auth_cache(conn: TigerGraphConnection) -> None:
+    """
+    Compatibility shim across pyTigerGraph builds:
+    some variants expect _cached_token_auth/_cached_pwd_auth to exist.
+    """
+    try:
+        conn._refresh_auth_headers()
+    except Exception:
+        base = conn._set_auth_header() if hasattr(conn, "_set_auth_header") else {}
+        if not isinstance(base, dict):
+            base = {}
+        base.setdefault("X-User-Agent", "pyTigerGraph")
+        if not hasattr(conn, "_cached_token_auth"):
+            conn._cached_token_auth = dict(base)
+        if not hasattr(conn, "_cached_pwd_auth"):
+            conn._cached_pwd_auth = dict(base)
+
+
 def _make_connection() -> TigerGraphConnection:
     settings = get_settings()
     if not settings.tg_credential:
@@ -27,8 +45,8 @@ def _make_connection() -> TigerGraphConnection:
         conn.apiToken = settings.tg_api_token
         conn.authMode = "token"
     # Avoid getToken() due version-specific internal token-cache bugs on some
-    # pyTigerGraph releases. Refresh auth headers from available credentials.
-    conn._refresh_auth_headers()
+    # pyTigerGraph releases.
+    _ensure_auth_cache(conn)
     logger.info("TigerGraph connection established → %s / %s", settings.tg_host_https, settings.graph_name)
     return conn
 
